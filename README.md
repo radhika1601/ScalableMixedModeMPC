@@ -26,5 +26,14 @@ cmake .
 make
 ```
 
+# Running tests
+
+To run the tests across multiple servers you can pass the ip configuration as a txt file with the following format.
+
+```
+<ip1> <port1>
+<ip2> <port2>
+```
+
 ### Question
 Please send email to radhikaradhika2028@u.northwestern.edu
