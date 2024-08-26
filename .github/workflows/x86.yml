@@ -1,0 +1,31 @@
+name: x86
+on: [push, pull_request]
+
+jobs:
+  build_x86:
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        build_type: [Debug, Release]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    env: 
+      BUILD_TYPE: ${{matrix.build_type}}
+    steps:
+    - uses: actions/checkout@v2
+    - name: install dependency
+      run: |
+        wget https://raw.githubusercontent.com/emp-toolkit/emp-readme/master/scripts/install.py
+        python3 install.py --deps --tool --ot
+        cd
+        git clone https://github.com/openfheorg/openfhe-development.git --branch v1.0.4
+        cd openfhe-development && mkdir build && cd build
+        cmake .. && make -j8 && sudo make install
+        cd
+    - name: Create Build Environment
+      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DUSE_RANDOM_DEVICE=On && make
+    - name: Test
+      shell: bash
+      run: |
+        mkdir data
+        make test
