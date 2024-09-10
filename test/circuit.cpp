@@ -62,7 +62,8 @@ int main(int argc, char** argv) {
         ios.push_back(new NetIO(party == ALICE ? nullptr : "127.0.0.1", port));
 
     SIMDCircExec<NetIO>* simd_circ = new SIMDCircExec<NetIO>(party, threads, ios.data());
-    test_circuit(file, party, ios.data(), 1, simd_circ);
+    test_circuit(file, party, ios.data(), 10000, simd_circ);
+    std::cout << "num and gates " << simd_circ->num_and_gates << " " << simd_circ->depth << "\n";
     delete simd_circ;
     for (auto io : ios)
         delete io;

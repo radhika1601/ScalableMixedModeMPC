@@ -6,7 +6,7 @@
 namespace emp {
 
 template <typename IO>
-class MPSIMDCircExec: SIMDCircuitExecution {
+class MPSIMDCircExec : SIMDCircuitExecution {
 private:
     MPBitTripleProvider<IO>* btp = nullptr;
     MPIOChannel<IO>* io;
@@ -24,10 +24,10 @@ public:
     int cur_party;
 
     MPSIMDCircExec(int num_party, int party, ThreadPool* pool, MPIOChannel<IO>* io) {
-        this->cur_party = party;
-        this->num_party = num_party;
-        this->pool      = pool;
-        btp             = new MPBitTripleProvider<IO>(num_party, party, pool, io);
+        this->cur_party        = party;
+        this->num_party        = num_party;
+        this->pool             = pool;
+        btp                    = new MPBitTripleProvider<IO>(num_party, party, pool, io);
         num_triples_pool       = btp->BUFFER_SZ;
         num_block_triples_pool = btp->BUFFER_SZ / 128;
         bit_triple_a           = new bool[num_triples_pool];
@@ -37,7 +37,7 @@ public:
         block_triple_a = new block[num_block_triples_pool];
         block_triple_b = new block[num_block_triples_pool];
         block_triple_c = new block[num_block_triples_pool];
-        btp->get_block_triple(block_triple_a, block_triple_b, block_triple_c);
+        btp->get_triple(block_triple_a, block_triple_b, block_triple_c);
         this->io = io;
     }
 
@@ -163,8 +163,8 @@ public:
             b = new block[alloc_length];
             c = new block[alloc_length];
             for (uint i = 0; i < alloc_length / num_block_triples_pool; ++i) {
-                btp->get_block_triple(a + i * num_block_triples_pool, b + i * num_block_triples_pool,
-                                      c + i * num_block_triples_pool);
+                btp->get_triple(a + i * num_block_triples_pool, b + i * num_block_triples_pool,
+                                c + i * num_block_triples_pool);
             }
             size_t tocp = min(alloc_length - length, num_block_triples);
             memcpy(block_triple_a, a + alloc_length - length, tocp);
@@ -181,7 +181,7 @@ public:
             memcpy(a, block_triple_a + num_block_triples, 16 * (num_block_triples_pool - num_block_triples));
             memcpy(b, block_triple_b + num_block_triples, 16 * (num_block_triples_pool - num_block_triples));
             memcpy(c, block_triple_c + num_block_triples, 16 * (num_block_triples_pool - num_block_triples));
-            btp->get_block_triple(block_triple_a, block_triple_b, block_triple_c);
+            btp->get_triple(block_triple_a, block_triple_b, block_triple_c);
             memcpy(a + (num_block_triples_pool - num_block_triples), block_triple_a,
                    16 * (length - (num_block_triples_pool - num_block_triples)));
             memcpy(b + (num_block_triples_pool - num_block_triples), block_triple_b,
@@ -247,6 +247,12 @@ public:
             delete[] c;
         }
         total_time += time_from(t);
+    }
+
+    void and_gate(bool* out, bool* in1, bool* in2, size_t bool_length, block* block_out, block* block_in1,
+                  block* block_in2, size_t length) {
+        this->and_gate(out, in1, in2, bool_length);
+        this->and_gate(block_out, block_in1, block_in2, length);
     }
 
     void xor_gate(bool* out1, bool* in1, bool* in2, size_t length) {

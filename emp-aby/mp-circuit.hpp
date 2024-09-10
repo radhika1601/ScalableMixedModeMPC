@@ -27,7 +27,7 @@ public:
 
     void from_file(const char* file) {
         FILE* f = fopen(file, "r");
-        if(f == nullptr){
+        if (f == nullptr) {
             std::cout << file << "\n";
             error("could not open file\n");
         }
@@ -103,21 +103,17 @@ public:
 #ifdef __debug
         auto t = clock_start();
 #endif
-        uint block_num;
-        if (num % 128 == 0)
-            block_num = num / 128;
-        else
-            block_num = num / 128 + 1;
+        uint block_num = num / 128, bool_num = num % 128;
         Wire* w;
         if (!shared && std::is_same<SIMDCirc, SIMDCircExec<IO>>::value && (party == BOB)) {
             for (uint i = 0; i < n1; ++i) {
                 w = circuit[i];
-                w->initialise_value(block_num);
+                w->initialise_value(block_num, bool_num);
                 w->set = true;
             }
             for (uint i = 0; i < n2; ++i) {
                 w = circuit[i + n1];
-                w->initialise_value(block_num);
+                w->initialise_value(block_num, bool_num);
                 bool dummy[128] = {false};
                 uint j;
                 for (j = 0; j < num; ++j) {
@@ -127,7 +123,9 @@ public:
                     }
                 }
                 if (j % 128 != 0) {
-                    w->value[j / 128] = bool_to_block(dummy);
+                    for (uint k = 0; k < bool_num; ++k) {
+                        w->rem_value[k] = dummy[k];
+                    }
                 }
                 w->set = true;
             }
@@ -135,7 +133,7 @@ public:
         else {
             for (uint i = 0; i < n1; ++i) {
                 w = circuit[i];
-                w->initialise_value(block_num);
+                w->initialise_value(block_num, bool_num);
                 bool dummy[128] = {false};
                 uint j;
                 for (j = 0; j < num; ++j) {
@@ -145,21 +143,23 @@ public:
                     }
                 }
                 if (j % 128 != 0) {
-                    w->value[j / 128] = bool_to_block(dummy);
+                    for (uint k = 0; k < bool_num; ++k) {
+                        w->rem_value[k] = dummy[k];
+                    }
                 }
                 w->set = true;
             }
             if (!shared && std::is_same<SIMDCirc, SIMDCircExec<IO>>::value && (party == ALICE)) {
                 for (uint i = 0; i < n2; ++i) {
                     w = circuit[i + n1];
-                    w->initialise_value(block_num);
+                    w->initialise_value(block_num, bool_num);
                     w->set = true;
                 }
             }
             else {
                 for (uint i = 0; i < n2; ++i) {
                     w = circuit[i + n1];
-                    w->initialise_value(block_num);
+                    w->initialise_value(block_num, bool_num);
                     bool dummy[128] = {false};
                     uint j;
                     for (j = 0; j < num; ++j) {
@@ -169,7 +169,9 @@ public:
                         }
                     }
                     if (j % 128 != 0) {
-                        w->value[j / 128] = bool_to_block(dummy);
+                        for (uint k = 0; k < bool_num; ++k) {
+                            w->rem_value[k] = dummy[k];
+                        }
                     }
                     w->set = true;
                 }
@@ -183,17 +185,23 @@ public:
             t = clock_start();
 #endif
             block *in1_and = nullptr, *in2_and = nullptr, *out_and = nullptr;
+            bool *bool_in1_and = nullptr, *bool_in2_and = nullptr, *bool_out_and = nullptr;
             int num_ands = 0;
             for (auto it = level_map[i].begin(); it != level_map[i].end(); ++it) {
                 Wire* w = circuit[*it];
                 switch (w->type) {
                     case AND:
-                        if (w->in1->set == false || w->in2->set == false)
+                        if (w->in1->set == false || w->in2->set == false) {
                             error("AND Unset wire being used");
-                        in1_and = (block*)realloc(in1_and, block_num * (num_ands + 1) * sizeof(block));
-                        in2_and = (block*)realloc(in2_and, block_num * (num_ands + 1) * sizeof(block));
+                        }
+                        in1_and      = (block*)realloc(in1_and, block_num * (num_ands + 1) * sizeof(block));
+                        in2_and      = (block*)realloc(in2_and, block_num * (num_ands + 1) * sizeof(block));
+                        bool_in1_and = (bool*)realloc(bool_in1_and, bool_num * (num_ands + 1) * sizeof(bool));
+                        bool_in2_and = (bool*)realloc(bool_in2_and, bool_num * (num_ands + 1) * sizeof(bool));
                         memcpy(in1_and + num_ands * block_num, w->in1->value, block_num * sizeof(block));
                         memcpy(in2_and + num_ands * block_num, w->in2->value, block_num * sizeof(block));
+                        memcpy(bool_in1_and + num_ands * bool_num, w->in1->rem_value, bool_num * sizeof(bool));
+                        memcpy(bool_in2_and + num_ands * bool_num, w->in2->rem_value, bool_num * sizeof(bool));
                         num_ands++;
                         if ((w->set == true) && (w->num_required > 0)) {
                             std::cout << *it << " " << w->num_required << std::endl;
@@ -209,8 +217,10 @@ public:
             t = clock_start();
 #endif
             if (num_ands != 0) {
-                out_and = (block*)malloc(block_num * num_ands * sizeof(block));
-                simd_circ->and_gate(out_and, in1_and, in2_and, num_ands * block_num);
+                out_and      = (block*)malloc(block_num * num_ands * sizeof(block));
+                bool_out_and = (bool*)malloc(bool_num * num_ands * sizeof(bool));
+                simd_circ->and_gate(bool_out_and, bool_in1_and, bool_in2_and, num_ands * bool_num, out_and, in1_and,
+                                    in2_and, num_ands * block_num);
             }
 #ifdef __debug
             std::cout << "AND: " << time_from(t) << "\t";
@@ -221,14 +231,15 @@ public:
                 Wire* w = circuit[*it];
                 switch (w->type) {
                     case AND:
-                        w->initialise_value(block_num);
-                        w->set_value(out_and + (num_and_rev * block_num), block_num);
+                        w->initialise_value(block_num, bool_num);
+                        w->set_value(out_and + (num_and_rev * block_num), block_num,
+                                     bool_out_and + (num_and_rev * bool_num), bool_num);
                         num_and_rev++;
                         w->in1->reset_value();
                         w->in2->reset_value();
                         break;
                     case XOR:
-                        w->initialise_value(block_num);
+                        w->initialise_value(block_num, bool_num);
                         if (w->in1->set == false || w->in2->set == false)
                             error("XOR Unset wire being used");
 
@@ -237,12 +248,13 @@ public:
                             error("Set wire is being set again");
                         }
                         simd_circ->xor_gate((w->value), (w->in1->value), (w->in2->value), block_num);
+                        simd_circ->xor_gate(w->rem_value, w->in1->rem_value, w->in2->rem_value, bool_num);
                         w->set = true;
                         w->in1->reset_value();
                         w->in2->reset_value();
                         break;
                     case INV:
-                        w->initialise_value(block_num);
+                        w->initialise_value(block_num, bool_num);
                         if (w->in1->set == false)
                             error("INV Unset wire being used");
 
@@ -251,6 +263,7 @@ public:
                             error("Set wire is being set again");
                         }
                         simd_circ->not_gate((w->value), (w->in1->value), block_num);
+                        simd_circ->not_gate(w->rem_value, w->in1->rem_value, bool_num);
                         w->set = true;
                         w->in1->reset_value();
                         break;
@@ -276,7 +289,8 @@ public:
                     }
                 }
             }
-            w->reset_value();
+            for (uint circ_index = 0; circ_index < bool_num; ++circ_index)
+                out[i + (circ_index + block_num * 128) * n3] = w->rem_value[circ_index];
         }
 #ifdef __debug
         std::cout << "output:" << time_from(t) << " us\n";

@@ -10,8 +10,8 @@ class BitTripleProvider {
 public:
     BitTripleProvider(int party, int threads, IO** ios);
 
-    void get_block_triple(block* a, block* b, block* c);  //length should be the #blocks
-    void get_triple(bool* a, bool* b, bool* c);           // length ... # bools
+    void get_triple(block* a, block* b, block* c);  //length should be the #blocks
+    void get_triple(bool* a, bool* b, bool* c);     // length ... # bools
 
     ~BitTripleProvider();
 

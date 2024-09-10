@@ -98,7 +98,7 @@ MPBitTripleProvider<IO>::~MPBitTripleProvider() {
 }
 
 template <typename IO>
-void MPBitTripleProvider<IO>::get_block_triple(block* a, block* b, block* c) {
+void MPBitTripleProvider<IO>::get_triple(block* a, block* b, block* c) {
     this->get_triple((bool*)a_bool.data(), (bool*)b_bool.data(), (bool*)c_bool.data());
     bool_to_block_arr(a, (bool*)a_bool.data(), BUFFER_SZ);
     bool_to_block_arr(b, (bool*)b_bool.data(), BUFFER_SZ);

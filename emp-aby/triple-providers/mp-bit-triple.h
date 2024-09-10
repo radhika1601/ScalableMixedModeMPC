@@ -9,11 +9,13 @@ namespace emp {
 template <typename IO>
 class MPBitTripleProvider {
 public:
-    MPBitTripleProvider(int num_party, int party, ThreadPool* pool, MPIOChannel<IO>* io,
-                        int buffer_length = ((ferret_b13.n - ferret_b13.k - ferret_b13.t * ferret_b13.log_bin_sz_pre - 128) / 128) * 128);
+    MPBitTripleProvider(
+        int num_party, int party, ThreadPool* pool, MPIOChannel<IO>* io,
+        int buffer_length = ((ferret_b13.n - ferret_b13.k - ferret_b13.t * ferret_b13.log_bin_sz_pre - 128) / 128) *
+                            128);
 
-    void get_block_triple(block* a, block* b, block* c);  //length should be the #blocks
-    void get_triple(bool* a, bool* b, bool* c);           // length ... # bools
+    void get_triple(block* a, block* b, block* c);  //length should be the #blocks
+    void get_triple(bool* a, bool* b, bool* c);     // length ... # bools
     ~MPBitTripleProvider();
 
     int BUFFER_SZ;

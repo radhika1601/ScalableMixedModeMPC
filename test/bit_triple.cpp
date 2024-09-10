@@ -13,7 +13,7 @@ double test_get_block_triple(BitTripleProvider<IO>* bt, IO* io) {
     block* b         = new block[length];
     block* c         = new block[length];
     auto start       = clock_start();
-    bt->get_block_triple(a, b, c);
+    bt->get_triple(a, b, c);
     long long t = time_from(start);
     if (party == ALICE) {
         io->send_block(a, length);
@@ -174,8 +174,8 @@ int main(int argc, char** argv) {
     for (int i = 0; i < threads; ++i)
         ios.push_back(new NetIO(party == ALICE ? nullptr : "127.0.0.1", port));
     BitTripleProvider<NetIO>* bt = new BitTripleProvider<NetIO>(party, threads, ios.data());
-    double timeused                    = time_from(start);
-    const double buffer_size           = BitTripleProvider<NetIO>::BUFFER_SZ;
+    double timeused              = time_from(start);
+    const double buffer_size     = BitTripleProvider<NetIO>::BUFFER_SZ;
     std::cout << party << "\tsetup\t" << timeused / 1000 << "ms" << std::endl;
     std::cout << "BLOCK TRIPLE GENERATION\t" << test_get_block_triple<NetIO>(bt, ios[0]) / buffer_size * 128
               << " ns per triple" << std::endl;
@@ -183,7 +183,6 @@ int main(int argc, char** argv) {
               << std::endl;
     //std::cout << "(10000, 100) MUX TRIPLE GENERATION\t" << test_get_mux_triple(bt, 10000, 100)/1000 << "ms" << std::endl;
     delete bt;
-    for(auto io: ios)
+    for (auto io : ios)
         delete io;
-
 }

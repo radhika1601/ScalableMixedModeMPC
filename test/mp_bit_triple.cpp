@@ -57,7 +57,7 @@ double test_block_triple(MPBitTripleProvider<IO>* mp_bit_triple_provider, MPIOCh
     int length = mp_bit_triple_provider->BUFFER_SZ / 128;
     block *a = new block[length], *b = new block[length], *c = new block[length];
     auto start = clock_start();
-    mp_bit_triple_provider->get_block_triple(a, b, c);
+    mp_bit_triple_provider->get_triple(a, b, c);
     double t = time_from(start);
     io->sync();
 

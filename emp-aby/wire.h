@@ -13,6 +13,7 @@ class Wire {
 public:
     int type;
     block* value;
+    bool* rem_value;
     uint32_t level;
     Wire* in1        = nullptr;
     Wire* in2        = nullptr;
@@ -61,14 +62,17 @@ public:
                 break;
         }
     }
-    void initialise_value(int n) {
+    void initialise_value(int n, int m = 0) {
         if (this->set == true && this->num_required > 0)
             error("Wire being initialised twice!");
         this->value = (block*)malloc(n * sizeof(block));
         memset(this->value, 0, n * sizeof(block));
+        this->rem_value = (bool*)malloc(m * sizeof(bool));
+        memset(this->rem_value, 0, m * sizeof(bool));
     }
-    void set_value(block* value, int n) {
+    void set_value(block* value, int n, bool* rem_value, int m) {
         memcpy(this->value, value, n * sizeof(block));
+        memcpy(this->rem_value, rem_value, m * sizeof(bool));
         if (this->num_required > 0)
             this->set = true;
     }
@@ -78,6 +82,7 @@ public:
             free(this->value);
             this->set      = false;
             this->num_used = 0;
+            free(this->rem_value);
         }
     }
 };

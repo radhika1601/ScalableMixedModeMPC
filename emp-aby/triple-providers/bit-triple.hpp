@@ -39,11 +39,11 @@ BitTripleProvider<IO>::BitTripleProvider(int party, int threads, IO** ios) {
     this->threads                          = threads;
     this->ios                              = ios;
     static std::string ot0_pre_ot_filename = (party == ALICE ? "./data/ALICE_sender" : "./data/BOB_receiver");
-    this->ot0 = new FerretCOT<IO>(party, threads, this->ios, false, true, ferret_b13, ot0_pre_ot_filename);
-    int rev_party                          = party == ALICE ? BOB : ALICE;
+    this->ot0     = new FerretCOT<IO>(party, threads, this->ios, false, true, ferret_b13, ot0_pre_ot_filename);
+    int rev_party = party == ALICE ? BOB : ALICE;
     static std::string ot1_pre_ot_filename = (party == ALICE ? "./data/ALICE_receiver" : "./data/BOB_sender");
-    this->ot1 = new FerretCOT<IO>(rev_party, threads, this->ios, false, true, ferret_b13, ot1_pre_ot_filename);
-    BUFFER_SZ = ((ferret_b13.n - ferret_b13.k - ferret_b13.t * ferret_b13.log_bin_sz - 128) / 128) * 128;
+    this->ot1   = new FerretCOT<IO>(rev_party, threads, this->ios, false, true, ferret_b13, ot1_pre_ot_filename);
+    BUFFER_SZ   = ((ferret_b13.n - ferret_b13.k - ferret_b13.t * ferret_b13.log_bin_sz - 128) / 128) * 128;
     this->delta = (party == ALICE) ? this->ot0->Delta : this->ot1->Delta;
     r0.resize(emp::ferret_b13.n);
     r1.resize(emp::ferret_b13.n);
@@ -63,7 +63,7 @@ BitTripleProvider<IO>::~BitTripleProvider() {
 }
 
 template <typename IO>
-void BitTripleProvider<IO>::get_block_triple(block* a, block* b, block* c) {
+void BitTripleProvider<IO>::get_triple(block* a, block* b, block* c) {
     this->get_triple((bool*)a_bool.data(), (bool*)b_bool.data(), (bool*)c_bool.data());
     bool_to_block_arr(a, (bool*)a_bool.data(), BUFFER_SZ);
     bool_to_block_arr(b, (bool*)b_bool.data(), BUFFER_SZ);
