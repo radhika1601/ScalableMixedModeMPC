@@ -158,7 +158,7 @@ void MultiIO::recv_data(int src, void* data, int len, int j, MESSAGE_TYPE msg_ty
                 received     = true;
                 int recv_len = io->recv_msg_queue[msg_type].front().first;
                 if (len != recv_len) {
-                    std::cout << "lengths" << len << " " << recv_len << "\n";
+                    std::cout << "\n" << party << " " << src << " lengths " << len << " " << recv_len << "\n";
                     error("unequal length");
                 }
                 memcpy(data, io->recv_msg_queue[msg_type].front().second, len);

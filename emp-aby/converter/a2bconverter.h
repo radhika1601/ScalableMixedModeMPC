@@ -192,7 +192,7 @@ void A2BConverter<IO>::convert(bool* out, int64_t* in, size_t length) {
                 memset(tmp[i], 0, length * sizeof(int64_t));
             }
             vector<std::future<void>> res;
-            int num_steps = ceil((double)(num_party - 1) / (double)threads);
+            int num_steps = ceil((double)(num_party) / (double)threads);
             for (int i = 0; i < threads; ++i) {
                 res.push_back(pool->enqueue([this, i, num_steps, length, t = tmp[i]]() {
                     int64_t* tmp_i = new int64_t[length];

@@ -5,7 +5,7 @@
 namespace emp {
 
 template <typename IO>
-class SIMDCircExec : SIMDCircuitExecution {
+class SIMDCircExec : SIMDCircuitExecution<BitTripleProvider<IO>> {
 private:
     BitTripleProvider<IO>* btp;
     IO* io;
@@ -71,50 +71,8 @@ public:
                     delete[] sel_mux;*/
         std::cout << "Total time in SIMD: " << total_time << " us\n";
     };
-
-    template <typename T>
-    inline void and_helper(T*& a, T*& b, T*& c, size_t length, bool& delete_array, T* bit_triple_a, T* bit_triple_b,
-                           T* bit_triple_c, size_t num_triples_pool, size_t& num_triples) {
-        if (length > num_triples_pool) {
-            a = new T[(length + num_triples_pool - 1) / num_triples_pool * num_triples_pool];
-            b = new T[(length + num_triples_pool - 1) / num_triples_pool * num_triples_pool];
-            c = new T[(length + num_triples_pool - 1) / num_triples_pool * num_triples_pool];
-            for (uint i = 0; i < (length + num_triples_pool - 1) / num_triples_pool; ++i)
-                btp->get_triple(a + i * num_triples_pool, b + i * num_triples_pool, c + i * num_triples_pool);
-            size_t tocp =
-                min((length + num_triples_pool - 1) / num_triples_pool * num_triples_pool - length, num_triples);
-            memcpy(bit_triple_a, a + (length + num_triples_pool - 1) / num_triples_pool * num_triples_pool - length,
-                   tocp);
-            memcpy(bit_triple_b, b + (length + num_triples_pool - 1) / num_triples_pool * num_triples_pool - length,
-                   tocp);
-            memcpy(bit_triple_c, c + (length + num_triples_pool - 1) / num_triples_pool * num_triples_pool - length,
-                   tocp);
-            num_triples  = 0;
-            delete_array = true;
-        }
-        else if (length > num_triples_pool - num_triples) {  // buffer is not long enough
-            a            = new T[length];
-            b            = new T[length];
-            c            = new T[length];
-            delete_array = true;
-            memcpy(a, bit_triple_a + num_triples, sizeof(T) * (num_triples_pool - num_triples));
-            memcpy(b, bit_triple_b + num_triples, sizeof(T) * (num_triples_pool - num_triples));
-            memcpy(c, bit_triple_c + num_triples, sizeof(T) * (num_triples_pool - num_triples));
-            btp->get_triple(bit_triple_a, bit_triple_b, bit_triple_c);
-            memcpy(a + num_triples_pool - num_triples, bit_triple_a,
-                   sizeof(T) * (length - (num_triples_pool - num_triples)));
-            memcpy(b + num_triples_pool - num_triples, bit_triple_b,
-                   sizeof(T) * (length - (num_triples_pool - num_triples)));
-            memcpy(c + num_triples_pool - num_triples, bit_triple_c,
-                   sizeof(T) * (length - (num_triples_pool - num_triples)));
-            num_triples = length - (num_triples_pool - num_triples);
-        }
-        else {
-            a = bit_triple_a + num_triples;
-            b = bit_triple_b + num_triples;
-            c = bit_triple_c + num_triples;
-            num_triples += length;
-        }
+    BitTripleProvider<IO> * getBtp(){
+        return btp;
     }
 
     void and_gate(bool* out, bool* in1, bool* in2, size_t bool_length, block* block_out, block* block_in1,
@@ -125,7 +83,7 @@ public:
         auto t  = clock_start();
         bool *a = nullptr, *b = nullptr, *c = nullptr;
         bool delete_array = false;
-        and_helper<bool>(a, b, c, bool_length, delete_array, bit_triple_a, bit_triple_b, bit_triple_c, num_triples_pool,
+        this->template and_helper<bool>(a, b, c, bool_length, delete_array, bit_triple_a, bit_triple_b, bit_triple_c, num_triples_pool,
                          num_triples);
         bool *d = new bool[bool_length], *d1 = new bool[bool_length];
         bool *e = new bool[bool_length], *e1 = new bool[bool_length];
@@ -136,7 +94,7 @@ public:
         }
         block *block_a = nullptr, *block_b = nullptr, *block_c = nullptr;
         bool delete_block_array = false;
-        and_helper<block>(block_a, block_b, block_c, length, delete_block_array, block_triple_a, block_triple_b,
+        this->template and_helper<block>(block_a, block_b, block_c, length, delete_block_array, block_triple_a, block_triple_b,
                           block_triple_c, num_block_triples_pool, num_block_triples);
         if (length > this->d.size()) {
             this->d.resize(length);
@@ -213,7 +171,7 @@ public:
         auto t  = clock_start();
         bool *a = nullptr, *b = nullptr, *c = nullptr;
         bool delete_array = false;
-        and_helper<bool>(a, b, c, length, delete_array, bit_triple_a, bit_triple_b, bit_triple_c, num_triples_pool,
+        this->template and_helper<bool>(a, b, c, length, delete_array, bit_triple_a, bit_triple_b, bit_triple_c, num_triples_pool,
                          num_triples);
         bool *d = new bool[length], *d1 = new bool[length];
         bool *e = new bool[length], *e1 = new bool[length];
@@ -266,7 +224,7 @@ public:
         auto t   = clock_start();
         block *a = nullptr, *b = nullptr, *c = nullptr;
         bool delete_array = false;
-        and_helper<block>(a, b, c, length, delete_array, block_triple_a, block_triple_b, block_triple_c,
+        this->template and_helper<block>(a, b, c, length, delete_array, block_triple_a, block_triple_b, block_triple_c,
                           num_block_triples_pool, num_block_triples);
         if (length > d.size()) {
             d.resize(length);
