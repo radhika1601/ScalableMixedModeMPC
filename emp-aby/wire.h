@@ -20,6 +20,7 @@ public:
     bool set         = false;
     int num_required = 0;
     int num_used     = 0;
+    bool is_output = false;
 
     Wire(int type) {
         if (type == INPUT) {
@@ -78,6 +79,7 @@ public:
     }
     void reset_value() {
         this->num_used = this->num_used + 1;
+        if(is_output) return;
         if (this->num_used >= this->num_required) {
             free(this->value);
             this->set      = false;

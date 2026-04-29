@@ -14,6 +14,8 @@ public:
     vector<vector<int>> level_map;
     vector<Wire*> circuit;
     SIMDCirc* simd_circ;
+    size_t depth          = 0;
+    size_t last_and_level = 0;
     ~Circuit() {}
     Circuit(FILE* f) {
         this->from_file(f);
@@ -84,9 +86,19 @@ public:
                 this->insert_level_map(new_wire, out);
             }
         }
+        for (uint i = 0; i < n3; ++i) {
+            Wire* w = circuit[num_wires - n3 + i];
+            w->is_output = true;
+        }
     }
 
     void insert_level_map(Wire* new_wire, int out) {
+        if (new_wire->type == AND) {
+            if (this->last_and_level < new_wire->level) {
+                this->last_and_level = new_wire->level;
+                depth += 1;
+            }
+        }
         if (level_map.size() < new_wire->level) {
             error("Missing level!");
         }
