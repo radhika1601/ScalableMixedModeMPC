@@ -20,6 +20,7 @@ endmacro()
 
 
 # Test cases
+add_test_case(and_helper)
 add_test_case_with_run(bit_triple)
 add_test_case_with_run(simd_exec)
 add_test_case_with_runarg(circuit "test/relu.txt")

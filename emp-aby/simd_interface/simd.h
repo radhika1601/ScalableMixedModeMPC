@@ -32,20 +32,19 @@ public:
                            T* bit_triple_c, size_t num_triples_pool, size_t& num_triples) {
         BTP* btp = getBtp();
         if (length > num_triples_pool) {
-            a = new T[(length + num_triples_pool - 1) / num_triples_pool * num_triples_pool];
-            b = new T[(length + num_triples_pool - 1) / num_triples_pool * num_triples_pool];
-            c = new T[(length + num_triples_pool - 1) / num_triples_pool * num_triples_pool];
-            for (uint i = 0; i < (length + num_triples_pool - 1) / num_triples_pool; ++i)
+            size_t total = (length + num_triples_pool - 1) / num_triples_pool * num_triples_pool;
+            a            = new T[total];
+            b            = new T[total];
+            c            = new T[total];
+            for (uint i = 0; i < total / num_triples_pool; ++i)
                 btp->get_triple(a + i * num_triples_pool, b + i * num_triples_pool, c + i * num_triples_pool);
-            size_t tocp =
-                min((length + num_triples_pool - 1) / num_triples_pool * num_triples_pool - length, num_triples);
-            memcpy(bit_triple_a, a + (length + num_triples_pool - 1) / num_triples_pool * num_triples_pool - length,
-                   tocp);
-            memcpy(bit_triple_b, b + (length + num_triples_pool - 1) / num_triples_pool * num_triples_pool - length,
-                   tocp);
-            memcpy(bit_triple_c, c + (length + num_triples_pool - 1) / num_triples_pool * num_triples_pool - length,
-                   tocp);
-            num_triples  = 0;
+            // The unused triples are a[length, total). Move as many as fit into the consumed
+            // slots just below num_triples, so the pool stays a contiguous unused suffix.
+            size_t tocp = min(total - length, num_triples);
+            memcpy(bit_triple_a + num_triples - tocp, a + length, sizeof(T) * tocp);
+            memcpy(bit_triple_b + num_triples - tocp, b + length, sizeof(T) * tocp);
+            memcpy(bit_triple_c + num_triples - tocp, c + length, sizeof(T) * tocp);
+            num_triples -= tocp;
             delete_array = true;
         }
         else if (length > num_triples_pool - num_triples) {  // buffer is not long enough

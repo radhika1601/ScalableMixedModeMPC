@@ -126,13 +126,13 @@ MultiIO::~MultiIO() {
     continue_comm = c;
     background_recv_fut.get();
     for (auto& io : ios) {
-        io.second->~MultiIOBase();
+        delete io.second;
     }
     for (auto& io : ot_ios[0]) {
-        io.second->~MultiIOBase();
+        delete io.second;
     }
     for (auto& io : ot_ios[1]) {
-        io.second->~MultiIOBase();
+        delete io.second;
     }
     net_config.clear();
     ios.clear();
@@ -162,6 +162,7 @@ void MultiIO::recv_data(int src, void* data, int len, int j, MESSAGE_TYPE msg_ty
                     error("unequal length");
                 }
                 memcpy(data, io->recv_msg_queue[msg_type].front().second, len);
+                free(io->recv_msg_queue[msg_type].front().second);
                 io->recv_msg_queue[msg_type].pop_front();
                 lock.unlock();
                 return;
@@ -234,8 +235,10 @@ void MultiIO::background_recv() {
     while (continue_comm) {
         int ready = 0;
         while (ready < 1) {
-            if (!continue_comm)
+            if (!continue_comm) {
+                free(pfds);
                 return;
+            }
             ready = poll(pfds, num_party - 1, -1);
             if (ready == -1) {
                 error("error: poll");
@@ -257,6 +260,7 @@ void MultiIO::background_recv() {
             continue_comm = c;
         }
     }
+    free(pfds);
 }
 
 }  // namespace emp

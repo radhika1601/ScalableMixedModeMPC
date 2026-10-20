@@ -283,6 +283,12 @@ public:
                         break;
                 }
             }
+            free(in1_and);
+            free(in2_and);
+            free(bool_in1_and);
+            free(bool_in2_and);
+            free(out_and);
+            free(bool_out_and);
 #ifdef __debug
             std::cout << "after AND: " << time_from(t) << "\n";
 #endif
