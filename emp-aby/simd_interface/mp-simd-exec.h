@@ -23,11 +23,12 @@ private:
 public:
     int cur_party;
 
-    MPSIMDCircExec(int num_party, int party, ThreadPool* pool, MPIOChannel<IO>* io) {
+    MPSIMDCircExec(int num_party, int party, ThreadPool* pool, MPIOChannel<IO>* io,
+                   int buffer_length = FERRET_BUFFER_SZ) {
         this->cur_party        = party;
         this->num_party        = num_party;
         this->pool             = pool;
-        btp                    = new MPBitTripleProvider<IO>(num_party, party, pool, io);
+        btp                    = new MPBitTripleProvider<IO>(num_party, party, pool, io, buffer_length);
         num_triples_pool       = btp->BUFFER_SZ;
         num_block_triples_pool = btp->BUFFER_SZ / 128;
         bit_triple_a           = new bool[num_triples_pool];

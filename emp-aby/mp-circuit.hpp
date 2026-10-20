@@ -294,7 +294,7 @@ public:
             Wire* w = circuit[num_wires - n3 + i];
             for (uint circ_index = 0; circ_index < block_num; ++circ_index) {
                 bool dummy[128] = {0};
-                block_to_bool(dummy, w->value[circ_index]);
+                bits_to_bools(dummy, &w->value[circ_index], 128);
                 for (uint j = 0; j < 128; ++j) {
                     if ((circ_index * 128 + j) < num) {
                         out[i + (circ_index * 128 + j) * n3] = dummy[j];

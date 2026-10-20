@@ -5,7 +5,7 @@
 #include "emp-aby/io/util.hpp"
 
 namespace emp {
-class MultiIOBase : public IOChannel<MultiIOBase> {
+class MultiIOBase : public IOChannel {
 private:
 public:
     int consocket = -1;
@@ -21,8 +21,8 @@ public:
             std::cout << "connected\n";
     }
 
-    void sync() {}
-    void flush() {}
+    void sync() override {}
+    void flush() override {}
 
     ~MultiIOBase() {
         close(consocket);
@@ -79,10 +79,10 @@ public:
         return true;
     }
 
-    void send_data_internal(const void* data, size_t len) {
-        size_t sent = 0;
+    void send_data_internal(const void* data, int64_t len) override {
+        int64_t sent = 0;
         while (sent < len) {
-            size_t res = write(consocket, (char*)data + sent, len - sent);
+            ssize_t res = write(consocket, (char*)data + sent, len - sent);
             if (res > 0)
                 sent += res;
             else
@@ -90,10 +90,10 @@ public:
         }
     }
 
-    void recv_data_internal(void* data, size_t len) {
-        size_t recvd = 0;
+    void recv_data_internal(void* data, int64_t len) override {
+        int64_t recvd = 0;
         while (recvd < len) {
-            size_t res = read(consocket, (char*)data + recvd, len - recvd);
+            ssize_t res = read(consocket, (char*)data + recvd, len - recvd);
             if (res > 0)
                 recvd += res;
             else

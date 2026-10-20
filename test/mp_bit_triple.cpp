@@ -1,3 +1,4 @@
+#include "test/test_config.h"
 #include "emp-aby/triple-providers/mp-bit-triple.h"
 #include "emp-aby/io/multi-io.hpp"
 using namespace emp;
@@ -95,8 +96,8 @@ int main(int argc, char** argv) {
         std::cout << "Format: test_mp_bit_triple PartyID Port num_parties" << std::endl;
         exit(0);
     }
-    parse_party_and_port(argv, &party, &port);
     num_party = atoi(argv[3]);
+    parse_party_and_port(argv, &party, &port, num_party);
 
     std::vector<std::pair<std::string, unsigned short>> net_config;
 
@@ -130,7 +131,7 @@ int main(int argc, char** argv) {
     auto start = clock_start();
 
     MPBitTripleProvider<MultiIOBase>* mp_bit_triple_provider =
-        new MPBitTripleProvider<MultiIOBase>(num_party, party, &pool, io);
+        new MPBitTripleProvider<MultiIOBase>(num_party, party, &pool, io, TEST_BUFFER_SZ);
     double timeused = time_from(start);
     std::cout << party << "\tsetup\t" << timeused / 1000 << "ms" << std::endl;
     //    const double buffer_size = pow(128, 3);

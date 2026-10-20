@@ -1,4 +1,6 @@
+#include "test/test_config.h"
 #include "emp-aby/simd_interface/simd_exec.h"
+using namespace emp;
 int party, port;
 
 const static int threads = 1;
@@ -280,7 +282,7 @@ int main(int argc, char** argv) {
         ios.push_back(new NetIO(party == ALICE ? nullptr : "127.0.0.1", port));
 
     auto start                     = clock_start();
-    SIMDCircExec<NetIO>* simd_circ = new SIMDCircExec<NetIO>(party, threads, ios.data());
+    SIMDCircExec<NetIO>* simd_circ = new SIMDCircExec<NetIO>(party, threads, ios.data(), 0, 0, TEST_BUFFER_SZ);
     double timeused                = time_from(start);
     std::cout << party << "\tsetup\t" << timeused / 1000 << "ms" << std::endl;
     NetIO* io = ios[0];

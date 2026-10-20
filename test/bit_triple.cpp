@@ -1,7 +1,9 @@
+#include "test/test_config.h"
 #include "emp-aby/triple-providers/bit-triple.h"
 #include "emp-aby/io/multi-io.hpp"
 
 #include <typeinfo>
+using namespace emp;
 int party, port;
 
 const static int threads = 1;
@@ -173,7 +175,7 @@ int main(int argc, char** argv) {
 
     for (int i = 0; i < threads; ++i)
         ios.push_back(new NetIO(party == ALICE ? nullptr : "127.0.0.1", port));
-    BitTripleProvider<NetIO>* bt = new BitTripleProvider<NetIO>(party, threads, ios.data());
+    BitTripleProvider<NetIO>* bt = new BitTripleProvider<NetIO>(party, threads, ios.data(), TEST_BUFFER_SZ);
     double timeused              = time_from(start);
     const double buffer_size     = BitTripleProvider<NetIO>::BUFFER_SZ;
     std::cout << party << "\tsetup\t" << timeused / 1000 << "ms" << std::endl;

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <map>
-#include "emp-tool/emp-tool.h"
+#include "emp-aby/utils.h"
 
 namespace emp {
 void accept_base_connections(int expected_connections, int bind_port, string bind_address,

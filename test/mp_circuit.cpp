@@ -1,18 +1,20 @@
+#include "test/test_config.h"
 #include "emp-aby/mp-circuit.hpp"
 #include "emp-aby/io/multi-io.hpp"
 
 #include <typeinfo>
+using namespace emp;
 
 int party, port, num_party;
 
 const static int threads = 4;
-int64_t mod              = ((1UL << 32) - (1UL << 30) + 1);
+int64_t modulus              = ((1UL << 32) - (1UL << 30) + 1);
 
 uint32_t mpc_main(uint32_t INPUT_A, uint32_t INPUT_B) {
     uint64_t x = (uint64_t)INPUT_A + (uint64_t)INPUT_B;
 
-    if (x > mod)
-        x = x - mod;
+    if (x > modulus)
+        x = x - modulus;
     return (uint32_t)x;
 }
 
@@ -42,7 +44,7 @@ void test_circuit(const char* file, int party, MPIOChannel<IO>* io, const int nu
             uint32_t B          = bool_to_int<uint32_t>(in + num * circuit->n1 + i * circuit->n2);
             uint32_t output     = bool_to_int<uint32_t>(out + i * circuit->n3);
             uint32_t sim_output = mpc_main(A, B);
-            if ((output + mod) % mod != (sim_output + mod) % mod) {
+            if ((output + modulus) % modulus != (sim_output + modulus) % modulus) {
                 std::cout << A << " " << B << " " << output << " " << sim_output << "\n";
                 error("Test Failed!");
             }
@@ -61,9 +63,9 @@ int main(int argc, char** argv) {
         std::cout << "Format: test_mp_bit_triple PartyID Port Circuit_file num_parties" << std::endl;
         exit(0);
     }
-    parse_party_and_port(argv, &party, &port);
-    const char* file = argv[3];
     num_party        = atoi(argv[4]);
+    parse_party_and_port(argv, &party, &port, num_party);
+    const char* file = argv[3];
 
     std::vector<std::pair<std::string, unsigned short>> net_config;
 
@@ -94,7 +96,7 @@ int main(int argc, char** argv) {
 
     io->setup_ot_ios();
     io->flush();
-    MPSIMDCircExec<MultiIOBase>* simd_circ = new MPSIMDCircExec<MultiIOBase>(num_party, party, &pool, io);
+    MPSIMDCircExec<MultiIOBase>* simd_circ = new MPSIMDCircExec<MultiIOBase>(num_party, party, &pool, io, TEST_BUFFER_SZ);
     std::cout << "SIMD CIRC setup \n";
     Circuit<MPSIMDCircExec<MultiIOBase>>* circuit = new Circuit<MPSIMDCircExec<MultiIOBase>>(file, party, simd_circ);
     std::cout << "Circuit setup done \n";

@@ -20,78 +20,56 @@ MPBitTripleProvider<IO>::MPBitTripleProvider(int num_party, int party, ThreadPoo
     xor_mac  = (block**)(malloc((threads / 2) * sizeof(block*)));
     xor_key  = (block**)(malloc((threads / 2) * sizeof(block*)));
     for (int i = 0; i < threads / 2; ++i) {
-        mac[i]      = new block[emp::ferret_b13.n];
-        key[i]      = new block[emp::ferret_b13.n];
+        mac[i]      = new block[BUFFER_SZ];
+        key[i]      = new block[BUFFER_SZ];
         xor_mac[i]  = new block[BUFFER_SZ];
         xor_key[i]  = new block[BUFFER_SZ];
         key_star[i] = new block[BUFFER_SZ];
     }
     delta = gen_delta();
-    cot_sender.resize((num_party) * sizeof(FerretCOT<IO>*));
-    cot_receiver.resize((num_party) * sizeof(FerretCOT<IO>*));
-    // Create the semi-honest Ferret instances.
-    for (int i = 0; i < num_party; ++i) {
-        if (party != i + 1) {
-            cot_sender[i]   = new FerretCOT<IO>(ALICE, 1, &(io->get(i + 1, party > (i + 1))), false, false);
-            cot_receiver[i] = new FerretCOT<IO>(BOB, 1, &(io->get(i + 1, party < (i + 1))), false, false);
-        }
-    }
+    bool delta_bits[128];
+    bits_to_bools(delta_bits, &delta, 128);
+    // All receivers of this party must output the same choice bits, so they share one choice seed.
+    block choice_seed;
+    prg.random_block(&choice_seed, 1);
+    // ALICE broadcasts a public LPN matrix seed shared by every Ferret instance.
     seed_gen();
-    int l            = ferret_b13.log_bin_sz * ferret_b13.t + ferret_b13.k + 128;
-    bool* pre_choice = new bool[l];
-    prg.random_bool(pre_choice, l);
-    vector<future<void>> res;
-    for (int i = 0; i < num_party; ++i)
-        if (party < (i + 1)) {
-            res.push_back(pool->enqueue([this, io, i, pre_choice]() {
-                cot_sender[i]->setup(this->delta,
-                                     "./data/" + std::to_string(this->party) + "to" + std::to_string(i + 1) + ".txt",
-                                     pre_choice, seed);
-                io->flush(i + 1);
-            }));
-            res.push_back(pool->enqueue([this, io, i, pre_choice]() {
-                cot_receiver[i]->setup(
-                    "./data/" + std::to_string(this->party) + "from" + std::to_string(i + 1) + ".txt", pre_choice,
-                    seed);
-                io->flush(i + 1);
-            }));
-        }
-        else if (party > (i + 1)) {
-            res.push_back(pool->enqueue([this, io, i, pre_choice]() {
-                cot_receiver[i]->setup(
-                    "./data/" + std::to_string(this->party) + "from" + std::to_string(i + 1) + ".txt", pre_choice,
-                    seed);
-                io->flush(i + 1);
-            }));
-            res.push_back(pool->enqueue([this, io, i, pre_choice]() {
-                cot_sender[i]->setup(this->delta,
-                                     "./data/" + std::to_string(this->party) + "to" + std::to_string(i + 1) + ".txt",
-                                     pre_choice, seed);
-                io->flush(i + 1);
-            }));
-        }
+    cot_sender.assign(num_party, nullptr);
+    cot_receiver.assign(num_party, nullptr);
+    // Create the semi-honest Ferret instances. Bootstrap runs lazily on the first rcot.
+    for (int i = 0; i < num_party; ++i) {
+        int peer = i + 1;
+        if (party == peer)
+            continue;
+        cot_sender[i] = new Ferret(ALICE, io->get(peer, party > peer), false);
+        cot_sender[i]->set_sid(makeBlock(party, peer));
+        cot_sender[i]->set_lpn_matrix_seed(seed);
+        cot_sender[i]->set_delta(delta_bits);
 
-    for (auto& v : res)
-        v.get();
-    res.clear();
-
-    delete[] pre_choice;
+        cot_receiver[i] = new Ferret(BOB, io->get(peer, party < peer), false);
+        cot_receiver[i]->set_sid(makeBlock(peer, party));
+        cot_receiver[i]->set_lpn_matrix_seed(seed);
+        cot_receiver[i]->set_choice_seed(choice_seed);
+    }
 }
 
 template <typename IO>
 MPBitTripleProvider<IO>::~MPBitTripleProvider() {
-    delete io;
-    delete pool;
-    delete[] mac;
-    delete[] key;
-    delete[] key_star;
-    delete[] xor_mac;
-    delete[] xor_key;
+    for (int i = 0; i < threads / 2; ++i) {
+        delete[] mac[i];
+        delete[] key[i];
+        delete[] key_star[i];
+        delete[] xor_mac[i];
+        delete[] xor_key[i];
+    }
+    free(mac);
+    free(key);
+    free(key_star);
+    free(xor_mac);
+    free(xor_key);
     delete[] sent;
     delete[] received;
     for (int i = 0; i < num_party; ++i) {
-        if (i + 1 == party)
-            continue;
         delete cot_sender[i];
         delete cot_receiver[i];
     }
@@ -124,7 +102,6 @@ void MPBitTripleProvider<IO>::get_triple(bool* a, bool* b, bool* c) {
     for (int i = 0; i < threads; ++i) {
         s[i] = new block[BUFFER_SZ];
     }
-    seed_gen();
     int num_steps = ceil((double)(num_party - 1) / ((double)threads / 2));
     vector<future<void>> res;
     for (int i = 0; i < threads / 2; ++i) {
@@ -164,6 +141,10 @@ void MPBitTripleProvider<IO>::get_triple(bool* a, bool* b, bool* c) {
         c[i] = (a[i] & b[i]) ^ getLSB(w[0][i]);
     }
 
+    for (int i = 0; i < threads / 2; ++i)
+        delete[] w[i];
+    for (int i = 0; i < threads; ++i)
+        delete[] s[i];
     free(s);
     free(w);
     b_set = false;

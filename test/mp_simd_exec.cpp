@@ -1,6 +1,8 @@
+#include "test/test_config.h"
 #include "emp-aby/simd_interface/mp-simd-exec.h"
 #include "fstream"
 #include "emp-aby/io/multi-io.hpp"
+using namespace emp;
 
 int party, port;
 
@@ -271,8 +273,8 @@ int main(int argc, char** argv) {
         std::cout << "Format: test_mp_bit_triple PartyID Port num_parties" << std::endl;
         exit(0);
     }
-    parse_party_and_port(argv, &party, &port);
     num_party = atoi(argv[3]);
+    parse_party_and_port(argv, &party, &port, num_party);
 
     std::vector<std::pair<std::string, unsigned short>> net_config;
 
@@ -304,9 +306,9 @@ int main(int argc, char** argv) {
     io->setup_ot_ios();
     io->flush();
     std::cout << "io setup" << std::endl;
-    long long int buffer_length            =((ferret_b13.n - ferret_b13.k - ferret_b13.t * ferret_b13.log_bin_sz_pre - 128) / 128) * 128;
+    long long int buffer_length            = TEST_BUFFER_SZ;
     auto start                             = clock_start();
-    MPSIMDCircExec<MultiIOBase>* simd_circ = new MPSIMDCircExec<MultiIOBase>(num_party, party, &pool, io);
+    MPSIMDCircExec<MultiIOBase>* simd_circ = new MPSIMDCircExec<MultiIOBase>(num_party, party, &pool, io, buffer_length);
     double timeused                        = time_from(start);
     std::cout << party << "\tsetup\t" << timeused / (2000 * buffer_length) << " ms" << std::endl;
     //    std::cout << party << " BOOL AND EVALUATION\t" << test_and(simd_circ, io, buffer_length) / 1000 << "ms"

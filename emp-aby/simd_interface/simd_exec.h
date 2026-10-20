@@ -32,9 +32,10 @@ public:
     size_t num_and_gates = 0;
     size_t num_block_triples_pool;
 
-    SIMDCircExec(int party, int threads, IO** ios, int length_mux = 0, int width_mux = 0) {
+    SIMDCircExec(int party, int threads, IO** ios, int length_mux = 0, int width_mux = 0,
+                 long long int buffer_length = FERRET_BUFFER_SZ) {
         this->cur_party        = party;
-        btp                    = new BitTripleProvider<IO>(party, threads, ios);
+        btp                    = new BitTripleProvider<IO>(party, threads, ios, buffer_length);
         num_triples_pool       = btp->BUFFER_SZ;
         num_block_triples_pool = btp->BUFFER_SZ / 128;
         bit_triple_a           = new bool[num_triples_pool];

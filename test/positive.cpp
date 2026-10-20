@@ -1,5 +1,7 @@
+#include "test/test_config.h"
 #include "emp-aby/mp-circuit.hpp"
 #include <typeinfo>
+using namespace emp;
 
 int party, port;
 
@@ -34,6 +36,7 @@ void test_circuit(const char* file, int party, NetIO** ios, const int num, SIMDC
     if (party == ALICE) {
         io->send_bool(in, (circuit->n1) * num);
         io->send_bool(out, (circuit->n3) * num);
+        io->flush();
     }
     else {
         bool* in1  = new bool[(circuit->n1) * num];
@@ -61,7 +64,7 @@ int main(int argc, char** argv) {
     for (int i = 0; i < threads; ++i)
         ios.push_back(new NetIO(party == ALICE ? nullptr : "127.0.0.1", port));
 
-    SIMDCircExec<NetIO>* simd_circ = new SIMDCircExec<NetIO>(party, threads, ios.data());
+    SIMDCircExec<NetIO>* simd_circ = new SIMDCircExec<NetIO>(party, threads, ios.data(), 0, 0, TEST_BUFFER_SZ);
     test_circuit(file, party, ios.data(), 10000, simd_circ);
     delete simd_circ;
 }

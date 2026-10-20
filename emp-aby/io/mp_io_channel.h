@@ -1,6 +1,6 @@
 #pragma once
 
-#include <emp-tool/emp-tool.h>
+#include "emp-aby/utils.h"
 
 namespace emp {
 enum MESSAGE_TYPE : uint8_t { NORM_MSG = 0, BOOT_REQ_MSG = 1, BOOT_RSP_MSG = 2, TERMINATE_MSG = 3 };

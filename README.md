@@ -4,27 +4,30 @@
 
 ### Dependencies
 
-1. `wget https://raw.githubusercontent.com/emp-toolkit/emp-readme/master/scripts/install.py`
-2. `python install.py -install -tool -ot`
-    1. By default it will build for Release. `-DCMAKE_BUILD_TYPE=[Release|Debug]` option is also available.
-    2. No sudo? Change [`CMAKE_INSTALL_PREFIX`](https://cmake.org/cmake/help/v2.8.8/cmake.html#variable%3aCMAKE_INSTALL_PREFIX).
-    3. On Mac [homebrew](https://brew.sh/) is needed for installation. 
-3. Install openFHE
-    ```console
-    git clone https://github.com/openfheorg/openfhe-development.git --branch v1.0.4
-    cd openfhe-development && mkdir build && cd build
-    cmake .. && make -j8 && sudo make install
-    ```
-### Build this project
+This project builds against emp-tool and emp-ot 1.0. These need C++20, CMake 3.25 and OpenSSL 3.
 
-1. Clone the repository and build using cmake.
+```console
+git clone https://github.com/emp-toolkit/emp-tool.git
+git clone https://github.com/emp-toolkit/emp-ot.git
+cmake -S emp-tool -B emp-tool/build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=<prefix>
+cmake --build emp-tool/build -j && cmake --install emp-tool/build
+cmake -S emp-ot -B emp-ot/build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=<prefix> -DCMAKE_PREFIX_PATH=<prefix>
+cmake --build emp-ot/build -j && cmake --install emp-ot/build
+```
+
+On macOS, remove any older emp headers from `/usr/local/include`. Apple clang searches that directory before the package include path.
+
+### Build this project
 
 ```console
 git clone https://github.com/radhika1601/ScalableMixedModeMPC.git
 cd ScalableMixedModeMPC
-cmake .
-make
+cmake -S . -B build -DCMAKE_PREFIX_PATH=<prefix>
+cmake --build build -j
+cd build && ctest
 ```
+
+Tests use a triple buffer of 2^20 (`test/test_config.h`). The library default is about 15M triples, which needs several GB per party.
 
 # Running tests
 

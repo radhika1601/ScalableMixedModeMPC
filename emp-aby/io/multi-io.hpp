@@ -208,13 +208,13 @@ void* MultiIO::recv_data(int src, int& len, int j, MESSAGE_TYPE msg_type) {
 int MultiIO::get_total_bytes_sent() {
     double kb = 0;
     for (auto& io : this->ios) {
-        kb += (double)(io.second->counter) / 1000;
+        kb += (double)(io.second->send_counter) / 1000;
     }
     for (auto& io : this->ot_ios[0]) {
-        kb += (double)(io.second->counter) / 1000;
+        kb += (double)(io.second->send_counter) / 1000;
     }
     for (auto& io : this->ot_ios[1]) {
-        kb += (double)(io.second->counter) / 1000;
+        kb += (double)(io.second->send_counter) / 1000;
     }
     return kb;
 }

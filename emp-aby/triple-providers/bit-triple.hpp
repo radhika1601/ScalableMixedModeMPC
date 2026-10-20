@@ -1,53 +1,54 @@
 template <typename IO>
-long long int BitTripleProvider<IO>::BUFFER_SZ =
-    ((ferret_b13.n - ferret_b13.k - ferret_b13.t * ferret_b13.log_bin_sz - 128) / 128) * 128;
+long long int BitTripleProvider<IO>::BUFFER_SZ = FERRET_BUFFER_SZ;
 
 template <typename IO>
 void BitTripleProvider<IO>::compute_rcots(bool* b) {
     auto t = clock_start();
-    ot0->rcot_inplace(r0.data(), ferret_b13.n);
-    ot1->rcot_inplace(r1.data(), ferret_b13.n);
+    ot0->rcot(r0.data(), BUFFER_SZ);
+    ios[0]->flush();
+    ot1->rcot(r1.data(), BUFFER_SZ);
+    ios[0]->flush();
     //	duplex_rcot_inplace(ot0, ot1, r0.data(),r1.data(), N_REG, N_REG);
     // std::cout << "1: " << time_from(t) << "\n";
     t = clock_start();
     if (party == ALICE) {
         for (int i = 0; i < BUFFER_SZ; i += 128) {
-            this->crh.Hn(A_hat.data() + i, r0.data() + i, 128, scratch.data());
+            this->crh.Hn(A_hat.data() + i, r0.data() + i, 128);
             xorBlocks_arr(A_star.data() + i, r0.data() + i, this->delta, 128);
-            this->crh.Hn(A_star.data() + i, A_star.data() + i, 128, scratch.data());
-            this->crh.Hn(B_hat.data() + i, r1.data() + i, 128, scratch.data());
+            this->crh.Hn(A_star.data() + i, A_star.data() + i, 128);
+            this->crh.Hn(B_hat.data() + i, r1.data() + i, 128);
             for (int j = 0; j < 128; ++j)
                 b[j + i] = getLSB(r1[j + i]);
         }
     }
     else {  // BOB
         for (int i = 0; i < BUFFER_SZ; i += 128) {
-            this->crh.Hn(B_hat.data() + i, r0.data() + i, 128, scratch.data());
+            this->crh.Hn(B_hat.data() + i, r0.data() + i, 128);
             for (int j = 0; j < 128; ++j)
                 b[j + i] = getLSB(r0[j + i]);
-            this->crh.Hn(A_hat.data() + i, r1.data() + i, 128, scratch.data());
+            this->crh.Hn(A_hat.data() + i, r1.data() + i, 128);
             xorBlocks_arr(A_star.data() + i, r1.data() + i, this->delta, 128);
-            this->crh.Hn(A_star.data() + i, A_star.data() + i, 128, scratch.data());
+            this->crh.Hn(A_star.data() + i, A_star.data() + i, 128);
         }
     }
     // std::cout << "2: " << time_from(t) << "\n";
 }
 
 template <typename IO>
-BitTripleProvider<IO>::BitTripleProvider(int party, int threads, IO** ios) {
+BitTripleProvider<IO>::BitTripleProvider(int party, int threads, IO** ios, long long int buffer_length) {
     this->party                            = party;
     this->threads                          = threads;
     this->ios                              = ios;
-    static std::string ot0_pre_ot_filename = (party == ALICE ? "./data/ALICE_sender" : "./data/BOB_receiver");
-    this->ot0     = new FerretCOT<IO>(party, threads, this->ios, false, true, ferret_b13, ot0_pre_ot_filename);
     int rev_party = party == ALICE ? BOB : ALICE;
-    static std::string ot1_pre_ot_filename = (party == ALICE ? "./data/ALICE_receiver" : "./data/BOB_sender");
-    this->ot1   = new FerretCOT<IO>(rev_party, threads, this->ios, false, true, ferret_b13, ot1_pre_ot_filename);
-    BUFFER_SZ   = ((ferret_b13.n - ferret_b13.k - ferret_b13.t * ferret_b13.log_bin_sz - 128) / 128) * 128;
+    // ot0 has ALICE as sender, ot1 has BOB as sender. Distinct sids separate the two transcripts.
+    this->ot0 = new Ferret(party, this->ios[0], false);
+    this->ot0->set_sid(makeBlock(0, 0));
+    this->ot1 = new Ferret(rev_party, this->ios[0], false);
+    this->ot1->set_sid(makeBlock(0, 1));
+    BUFFER_SZ   = buffer_length;
     this->delta = (party == ALICE) ? this->ot0->Delta : this->ot1->Delta;
-    r0.resize(emp::ferret_b13.n);
-    r1.resize(emp::ferret_b13.n);
-    scratch.resize(BUFFER_SZ);
+    r0.resize(BUFFER_SZ);
+    r1.resize(BUFFER_SZ);
     A_hat.resize(BUFFER_SZ);
     A_star.resize(BUFFER_SZ);
     B_hat.resize(BUFFER_SZ);

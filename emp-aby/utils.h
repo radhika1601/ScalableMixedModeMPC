@@ -1,6 +1,26 @@
 #pragma once
 #include "emp-tool/emp-tool.h"
+#include "emp-ot/emp-ot.h"
+#include <cstdlib>
+#include <future>
+#include <string>
+#include <vector>
 namespace emp {
+using std::future;
+using std::min;
+using std::string;
+using std::vector;
+using tuning::ferret_b13;
+
+// Ferret b13 RCOTs produced per round, and the triple buffer size derived from it.
+inline constexpr int64_t FERRET_N = ferret_b13.t << ferret_b13.tree_depth;
+inline constexpr int64_t FERRET_BUFFER_SZ = ((FERRET_N - ferret_b13.M) / 128) * 128;
+
+// argv[1] is the party id, argv[2] the port.
+inline void parse_party_and_port(char** argv, int* party, int* port, int max_party = BOB) {
+    *party = parse_party(argv, max_party);
+    *port  = atoi(argv[2]);
+}
 
 inline void andBlocks_arr(block* res, const block* x, const block* y, int nblocks) {
     const block* dest = nblocks + x;

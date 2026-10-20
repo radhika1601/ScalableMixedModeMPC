@@ -1,5 +1,7 @@
+#include "test/test_config.h"
 #include "emp-aby/mp-circuit.hpp"
 #include <typeinfo>
+using namespace emp;
 
 int party, port;
 
@@ -61,7 +63,7 @@ int main(int argc, char** argv) {
     for (int i = 0; i < threads; ++i)
         ios.push_back(new NetIO(party == ALICE ? nullptr : "127.0.0.1", port));
 
-    SIMDCircExec<NetIO>* simd_circ = new SIMDCircExec<NetIO>(party, threads, ios.data());
+    SIMDCircExec<NetIO>* simd_circ = new SIMDCircExec<NetIO>(party, threads, ios.data(), 0, 0, TEST_BUFFER_SZ);
     test_circuit(file, party, ios.data(), 10000, simd_circ);
     std::cout << "num and gates " << simd_circ->num_and_gates << " " << simd_circ->depth << "\n";
     delete simd_circ;

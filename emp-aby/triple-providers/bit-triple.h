@@ -8,7 +8,7 @@ namespace emp {
 template <typename IO>
 class BitTripleProvider {
 public:
-    BitTripleProvider(int party, int threads, IO** ios);
+    BitTripleProvider(int party, int threads, IO** ios, long long int buffer_length = FERRET_BUFFER_SZ);
 
     void get_triple(block* a, block* b, block* c);  //length should be the #blocks
     void get_triple(bool* a, bool* b, bool* c);     // length ... # bools
@@ -20,11 +20,11 @@ public:
 private:
     int party, threads;
     IO** ios;
-    FerretCOT<IO>*ot0 = nullptr, *ot1 = nullptr;
-    CRH crh;
+    Ferret *ot0 = nullptr, *ot1 = nullptr;
+    CCRH crh;
     PRG prg;
     block delta;
-    vector<block> r0, r1, scratch, A_hat, A_star, B_hat;
+    vector<block> r0, r1, A_hat, A_star, B_hat;
     vector<unsigned char> a_bool, b_bool, c_bool;
     void compute_rcots(bool* b);
 };
