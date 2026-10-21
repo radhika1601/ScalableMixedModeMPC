@@ -58,17 +58,10 @@ private:
     PRG prg;
     vector<unsigned char> a_bool, b_bool, c_bool;
     block **key_star, **xor_mac, **xor_key, **key, **mac;
-    bool *sent, *received;
     CCRH crh;
     block delta;
     int num_party;
-    bool b_set = false;
     void send(int send_to, const bool* a, block* s, int thread_idx) {
-        if (send_to == party - 1)
-            return;
-        if (sent[send_to])
-            return;
-        sent[send_to] = true;
         cot_sender[send_to]->rcot(this->key[thread_idx], BUFFER_SZ);
         for (int i = 0; i < BUFFER_SZ; i += 128) {
             xorBlocks_arr(key_star[thread_idx] + i, key[thread_idx] + i, delta, 128);
@@ -84,18 +77,13 @@ private:
         xorBlocks_arr(xor_key[thread_idx], xor_key[thread_idx], key[thread_idx], BUFFER_SZ);
     }
 
+    // All receivers share one choice seed, so any one of them can write b. Pass b to
+    // exactly one call and nullptr to the rest.
     void recv(int receive_from, bool* b, block* w, block* s, int thread_idx) {
-        if (receive_from == party - 1)
-            return;
-        if (received[receive_from])
-            return;
-        received[receive_from] = true;
         cot_receiver[receive_from]->rcot(this->mac[thread_idx], BUFFER_SZ);
-        if (!b_set) {
+        if (b != nullptr) {
             for (int i = 0; i < BUFFER_SZ; ++i)
                 b[i] = getLSB(mac[thread_idx][i]);
-
-            b_set = true;
         }
         io->get(receive_from + 1, party < (receive_from + 1))->flush();
         io->get(receive_from + 1, party < (receive_from + 1))->recv_block(s, BUFFER_SZ);

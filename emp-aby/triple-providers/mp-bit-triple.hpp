@@ -12,8 +12,6 @@ MPBitTripleProvider<IO>::MPBitTripleProvider(int num_party, int party, ThreadPoo
     a_bool.resize(BUFFER_SZ);
     b_bool.resize(BUFFER_SZ);
     c_bool.resize(BUFFER_SZ);
-    sent     = new bool[num_party];
-    received = new bool[num_party];
     mac      = (block**)(malloc((threads / 2) * sizeof(block*)));
     key      = (block**)(malloc((threads / 2) * sizeof(block*)));
     key_star = (block**)(malloc((threads / 2) * sizeof(block*)));
@@ -67,8 +65,6 @@ MPBitTripleProvider<IO>::~MPBitTripleProvider() {
     free(key_star);
     free(xor_mac);
     free(xor_key);
-    delete[] sent;
-    delete[] received;
     for (int i = 0; i < num_party; ++i) {
         delete cot_sender[i];
         delete cot_receiver[i];
@@ -86,8 +82,6 @@ void MPBitTripleProvider<IO>::get_triple(block* a, block* b, block* c) {
 template <typename IO>
 void MPBitTripleProvider<IO>::get_triple(bool* a, bool* b, bool* c) {
     prg.random_bool(a, BUFFER_SZ);
-    memset(sent, 0, num_party * sizeof(bool));
-    memset(received, 0, num_party * sizeof(bool));
     ch[0] = zero_block;
     ch[1] = all_one_block;
     block **w, **s;
@@ -102,21 +96,24 @@ void MPBitTripleProvider<IO>::get_triple(bool* a, bool* b, bool* c) {
     for (int i = 0; i < threads; ++i) {
         s[i] = new block[BUFFER_SZ];
     }
+    // Peer offsets 1 .. num_party-1 are split into contiguous runs, one per worker.
+    // Each party sends to party+offset and receives from party-offset, so the two ends
+    // of every pair handle it in the same worker at the same step.
     int num_steps = ceil((double)(num_party - 1) / ((double)threads / 2));
     vector<future<void>> res;
     for (int i = 0; i < threads / 2; ++i) {
         res.push_back(pool->enqueue([this, i, num_steps, a, s] {
-            for (int step = 1; step <= num_steps; ++step) {
-                int send_to = ((party - 1) + step + num_steps * i) % num_party;
+            for (int offset = num_steps * i + 1; offset <= min(num_steps * (i + 1), num_party - 1); ++offset) {
+                int send_to = ((party - 1) + offset) % num_party;
                 send(send_to, a, s[i], i);
             }
         }));
     }
     for (int i = 0; i < threads / 2; ++i) {
         res.push_back(pool->enqueue([this, i, num_steps, b, w, s] {
-            for (int step = 1; step <= num_steps; ++step) {
-                int receive_from = ((party - 1) + num_party - step - num_steps * i) % num_party;
-                recv(receive_from, b, w[i], s[i + threads / 2], i);
+            for (int offset = num_steps * i + 1; offset <= min(num_steps * (i + 1), num_party - 1); ++offset) {
+                int receive_from = ((party - 1) + num_party - offset) % num_party;
+                recv(receive_from, offset == 1 ? b : nullptr, w[i], s[i + threads / 2], i);
             }
         }));
     }
@@ -147,5 +144,4 @@ void MPBitTripleProvider<IO>::get_triple(bool* a, bool* b, bool* c) {
         delete[] s[i];
     free(s);
     free(w);
-    b_set = false;
 }

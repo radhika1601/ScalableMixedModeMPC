@@ -7,7 +7,11 @@ using namespace emp;
 
 int party, port;
 
-const static int threads = 4;
+// More threads than peers exercises the split of peers across workers.
+#ifndef TEST_THREADS
+#define TEST_THREADS 4
+#endif
+const static int threads = TEST_THREADS;
 
 int num_party;
 
