@@ -61,37 +61,51 @@ private:
     CCRH crh;
     block delta;
     int num_party;
-    void send(int send_to, const bool* a, block* s, int thread_idx) {
+    // A triple uses only the low bit of each OT message.  The sender holds
+    // H(k) and H(k ^ delta) and sends the bit lsb(H(k)) ^ lsb(H(k ^ delta)) ^ a_j,
+    // so the receiver ends with lsb(H(k)) ^ b_j a_j.  With one peer a party is the
+    // sender in a single OT per triple, so it takes a_j = lsb(H(k)) ^ lsb(H(k ^ delta))
+    // and sends nothing; then a must not be used before this returns.
+    void send(int send_to, bool* a, bool* s, int thread_idx) {
         cot_sender[send_to]->rcot(this->key[thread_idx], BUFFER_SZ);
         for (int i = 0; i < BUFFER_SZ; i += 128) {
             xorBlocks_arr(key_star[thread_idx] + i, key[thread_idx] + i, delta, 128);
             crh.Hn(key[thread_idx] + i, key[thread_idx] + i, 128);
             crh.Hn(key_star[thread_idx] + i, key_star[thread_idx] + i, 128);
         }
-        io->get(send_to + 1, party > (send_to + 1))->flush();
-        for (int j = 0; j < BUFFER_SZ; ++j) {
-            s[j] = key[thread_idx][j] ^ key_star[thread_idx][j] ^ ch[a[j]];
+        if (num_party == 2) {
+            for (int j = 0; j < BUFFER_SZ; ++j)
+                a[j] = getLSB(key[thread_idx][j]) != getLSB(key_star[thread_idx][j]);
         }
-        io->get(send_to + 1, party > (send_to + 1))->send_block(s, BUFFER_SZ);
-        io->get(send_to + 1, party > (send_to + 1))->flush();
+        else {
+            io->get(send_to + 1, party > (send_to + 1))->flush();
+            for (int j = 0; j < BUFFER_SZ; ++j)
+                s[j] = (getLSB(key[thread_idx][j]) != getLSB(key_star[thread_idx][j])) != a[j];
+            io->get(send_to + 1, party > (send_to + 1))->send_bool(s, BUFFER_SZ);
+            io->get(send_to + 1, party > (send_to + 1))->flush();
+        }
         xorBlocks_arr(xor_key[thread_idx], xor_key[thread_idx], key[thread_idx], BUFFER_SZ);
     }
 
     // All receivers share one choice seed, so any one of them can write b. Pass b to
     // exactly one call and nullptr to the rest.
-    void recv(int receive_from, bool* b, block* w, block* s, int thread_idx) {
+    // The sender's correction bits (none with one peer) go into the low bit of w.
+    void recv(int receive_from, bool* b, block* w, bool* s, int thread_idx) {
         cot_receiver[receive_from]->rcot(this->mac[thread_idx], BUFFER_SZ);
         if (b != nullptr) {
             for (int i = 0; i < BUFFER_SZ; ++i)
                 b[i] = getLSB(mac[thread_idx][i]);
         }
-        io->get(receive_from + 1, party < (receive_from + 1))->flush();
-        io->get(receive_from + 1, party < (receive_from + 1))->recv_block(s, BUFFER_SZ);
-        io->get(receive_from + 1, party < (receive_from + 1))->flush();
-
+        if (num_party != 2) {
+            io->get(receive_from + 1, party < (receive_from + 1))->flush();
+            io->get(receive_from + 1, party < (receive_from + 1))->recv_bool(s, BUFFER_SZ);
+            io->get(receive_from + 1, party < (receive_from + 1))->flush();
+            const block lsb = makeBlock(0, 1);
+            for (int j = 0; j < BUFFER_SZ; ++j)
+                if (s[j]) w[j] = w[j] ^ lsb;
+        }
         for (int i = 0; i < BUFFER_SZ; i += 128) {
             crh.Hn(mac[thread_idx] + i, mac[thread_idx] + i, 128);
-            xorBlocks_arr(w + i, s + i, w + i, 128);
             xorBlocks_arr(xor_mac[thread_idx] + i, xor_mac[thread_idx] + i, mac[thread_idx] + i, 128);
         }
     }

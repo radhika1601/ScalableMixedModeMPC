@@ -84,9 +84,10 @@ void MPBitTripleProvider<IO>::get_triple(bool* a, bool* b, bool* c) {
     prg.random_bool(a, BUFFER_SZ);
     ch[0] = zero_block;
     ch[1] = all_one_block;
-    block **w, **s;
+    block** w;
+    bool** s;
     w = (block**)malloc((threads / 2) * sizeof(block*));
-    s = (block**)malloc(threads * sizeof(block*));
+    s = (bool**)malloc(threads * sizeof(bool*));
     for (int i = 0; i < threads / 2; ++i) {
         w[i] = new block[BUFFER_SZ];
         memset(w[i], 0, BUFFER_SZ * sizeof(block));
@@ -94,7 +95,7 @@ void MPBitTripleProvider<IO>::get_triple(bool* a, bool* b, bool* c) {
         memset(xor_key[i], 0, BUFFER_SZ * sizeof(block));
     }
     for (int i = 0; i < threads; ++i) {
-        s[i] = new block[BUFFER_SZ];
+        s[i] = new bool[BUFFER_SZ];
     }
     // Peer offsets 1 .. num_party-1 are split into contiguous runs, one per worker.
     // Each party sends to party+offset and receives from party-offset, so the two ends

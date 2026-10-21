@@ -45,6 +45,14 @@ double test_bool_triple(MPBitTripleProvider<IO>* mp_bit_triple_provider, MPIOCha
                 error("Bool Triple failed!");
             }
         }
+        // a and b must be uniform, not only satisfy c = a b (a constant a would).
+        int64_t ones_a = 0, ones_b = 0;
+        for (int i = 0; i < length; ++i) {
+            ones_a += a[i];
+            ones_b += b[i];
+        }
+        if (std::abs(ones_a - length / 2) > length / 100 || std::abs(ones_b - length / 2) > length / 100)
+            error("Bool Triple not uniform!");
 
         //        std::cout << "Bool Triple Passed" << std::endl;
     }
