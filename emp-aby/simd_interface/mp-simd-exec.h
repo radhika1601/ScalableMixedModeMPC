@@ -18,7 +18,39 @@ private:
     size_t num_block_triples_pool;
     int num_party;
     double total_time = 0;
-    vector<block> d, d1, e, e1;
+    vector<block> d, e;
+
+    // ALICE only. Reads every other party's masked inputs on its own pool worker, then
+    // XORs them into d, e (bools) and block_d, block_e. Each party sends its bools first,
+    // then its blocks, so the read order per party matches.
+    void recv_masked_from_all(bool* d, bool* e, size_t bool_length, block* block_d, block* block_e,
+                              size_t length) {
+        size_t peers = num_party - 1;
+        vector<unsigned char> d0(peers * bool_length), e0(peers * bool_length);
+        vector<block> block_d0(peers * length), block_e0(peers * length);
+        vector<future<void>> res;
+        for (int i = 2; i <= num_party; ++i) {
+            size_t k = i - 2;
+            res.push_back(pool->enqueue([this, i, k, bool_length, length, &d0, &e0, &block_d0, &block_e0]() {
+                if (bool_length > 0) {
+                    this->io->recv_bool(i, (bool*)d0.data() + k * bool_length, bool_length);
+                    this->io->recv_bool(i, (bool*)e0.data() + k * bool_length, bool_length);
+                }
+                if (length > 0) {
+                    this->io->recv_block(i, block_d0.data() + k * length, length);
+                    this->io->recv_block(i, block_e0.data() + k * length, length);
+                }
+            }));
+        }
+        for (auto& v : res)
+            v.get();
+        for (size_t k = 0; k < peers; ++k) {
+            xorBools_arr(d, d, (bool*)d0.data() + k * bool_length, bool_length);
+            xorBools_arr(e, e, (bool*)e0.data() + k * bool_length, bool_length);
+            xorBlocks_arr(block_d, block_d, block_d0.data() + k * length, length);
+            xorBlocks_arr(block_e, block_e, block_e0.data() + k * length, length);
+        }
+    }
 
 public:
     int cur_party;
@@ -72,14 +104,7 @@ public:
         }
 
         if (cur_party == ALICE) {
-            bool *d0 = new bool[length], *e0 = new bool[length];
-
-            for (int i = 2; i <= num_party; ++i) {
-                io->recv_bool(i, d0, length);
-                io->recv_bool(i, e0, length);
-                xorBools_arr(d, d, d0, length);
-                xorBools_arr(e, e, e0, length);
-            }
+            recv_masked_from_all(d, e, length, nullptr, nullptr, 0);
 
             vector<future<void>> res;
             for (int i = 2; i <= num_party; ++i) {
@@ -92,9 +117,6 @@ public:
             for (auto& v : res)
                 v.get();
             res.clear();
-
-            delete[] d0;
-            delete[] e0;
         }
         else {
             io->send_bool(ALICE, d, length);
@@ -130,9 +152,7 @@ public:
                           num_block_triples_pool, num_block_triples);
         if (length > d.size()) {
             d.resize(length);
-            d1.resize(length);
             e.resize(length);
-            e1.resize(length);
         }
 
         for (uint i = 0; i < length; ++i) {
@@ -141,12 +161,7 @@ public:
         }
 
         if (cur_party == ALICE) {
-            for (int i = 2; i <= num_party; ++i) {
-                io->recv_block(i, d1.data(), length);
-                io->recv_block(i, e1.data(), length);
-                xorBlocks_arr(d.data(), d.data(), d1.data(), length);
-                xorBlocks_arr(e.data(), e.data(), e1.data(), length);
-            }
+            recv_masked_from_all(nullptr, nullptr, 0, d.data(), e.data(), length);
 
             for (int i = 2; i <= num_party; ++i) {
                 io->send_block(i, d.data(), length);
@@ -200,9 +215,7 @@ public:
 
         if (length > this->d.size()) {
             this->d.resize(length);
-            this->d1.resize(length);
             this->e.resize(length);
-            this->e1.resize(length);
         }
 
         for (uint i = 0; i < length; ++i) {
@@ -211,18 +224,7 @@ public:
         }
 
         if (cur_party == ALICE) {
-            bool *d0 = new bool[bool_length], *e0 = new bool[bool_length];
-
-            for (int i = 2; i <= num_party; ++i) {
-                io->recv_bool(i, d0, bool_length);
-                io->recv_bool(i, e0, bool_length);
-                xorBools_arr(d, d, d0, bool_length);
-                xorBools_arr(e, e, e0, bool_length);
-                io->recv_block(i, this->d1.data(), length);
-                io->recv_block(i, this->e1.data(), length);
-                xorBlocks_arr(this->d.data(), this->d.data(), this->d1.data(), length);
-                xorBlocks_arr(this->e.data(), this->e.data(), this->e1.data(), length);
-            }
+            recv_masked_from_all(d, e, bool_length, this->d.data(), this->e.data(), length);
 
             vector<future<void>> res;
             for (int i = 2; i <= num_party; ++i) {
@@ -237,9 +239,6 @@ public:
             for (auto& v : res)
                 v.get();
             res.clear();
-
-            delete[] d0;
-            delete[] e0;
         }
         else {
             io->send_bool(ALICE, d, bool_length);
